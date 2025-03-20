@@ -4,18 +4,19 @@
 #include "RigidBody.h"
 #include <cmath>
 #include <vector>
+#include <algorithm>
 
 namespace Collision {
 
     bool checkCircleCollision(const RigidBody& body1, const RigidBody& body2) {
-        float distance = (body1.position - body2.position).length();
-        return distance < (body1.radius + body2.radius);
+        float distanceSquared = (body1.position - body2.position).lengthSquared();
+        float radiusSum = body1.radius + body2.radius;
+        return distanceSquared < (radiusSum * radiusSum);
     }
 
     bool checkRectangleCollisionSAT(const RigidBody& body1, const RigidBody& body2) {
         std::vector<Vector2D> body1Vertices = getRectangleVertices(body1);
         std::vector<Vector2D> body2Vertices = getRectangleVertices(body2);
-
         std::vector<Vector2D> axes = getAxes(body1, body2);
 
         for (const auto& axis : axes) {
@@ -32,17 +33,15 @@ namespace Collision {
         float closestY = std::clamp(body1.position.y, body2.position.y - body2.radius, body2.position.y + body2.radius);
 
         Vector2D closestPoint(closestX, closestY);
-        float distance = (body1.position - closestPoint).length();
+        float distanceSquared = (body1.position - closestPoint).lengthSquared();
 
-        return distance < body1.radius;
+        return distanceSquared < (body1.radius * body1.radius);
     }
 
     std::vector<Vector2D> getRectangleVertices(const RigidBody& body) {
         std::vector<Vector2D> vertices;
-
         float halfWidth = body.radius;
         float halfHeight = body.radius;
-
         float cosAngle = std::cos(body.angle);
         float sinAngle = std::sin(body.angle);
 
@@ -56,7 +55,6 @@ namespace Collision {
 
     std::vector<Vector2D> getAxes(const RigidBody& body1, const RigidBody& body2) {
         std::vector<Vector2D> axes;
-
         auto body1Vertices = getRectangleVertices(body1);
         auto body2Vertices = getRectangleVertices(body2);
 
@@ -112,21 +110,28 @@ namespace Collision {
         return false;
     }
 
-    void resolveCollision(RigidBody& body1, RigidBody& body2) {
-        if (checkCollision(body1, body2)) {
-            Vector2D normal = (body2.position - body1.position).normalized();
-            Vector2D relativeVelocity = body1.velocity - body2.velocity;
+    void resolveCollision(RigidBody& ball1, RigidBody& ball2) {
+        Vector2D diff = ball2.position - ball1.position;
+        float distance = diff.length();
+
+        if (distance < ball1.radius + ball2.radius) {
+            Vector2D normal = diff.normalized();
+            Vector2D relativeVelocity = ball2.velocity - ball1.velocity;
+
             float velocityAlongNormal = relativeVelocity.dot(normal);
 
-            if (velocityAlongNormal > 0) return;
+            if (velocityAlongNormal < 0) {
 
-            float restitution = 0.9f;
-            float impulseMagnitude = -(1 + restitution) * velocityAlongNormal;
-            impulseMagnitude /= body1.invMass + body2.invMass;
+                float restitution = 1.0f;
 
-            Vector2D impulse = normal * impulseMagnitude;
-            body1.applyForce(impulse);
-            body2.applyForce(-impulse);
+                float impulse = -(1 + restitution) * velocityAlongNormal;
+                impulse /= (ball1.invMass + ball2.invMass);
+
+                Vector2D impulseVector = normal * impulse;
+
+                ball1.velocity += impulseVector * ball1.invMass;
+                ball2.velocity -= impulseVector * ball2.invMass;
+            }
         }
     }
 }

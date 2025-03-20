@@ -74,18 +74,56 @@ public:
             Vector2D impulse = normal * j;
             applyForce(impulse);
             other.applyForce(-impulse);
+
+            Vector2D tangent = relativeVelocity - normal * relativeVelocity.dot(normal);
+            float friction = 0.5f;
+            Vector2D frictionImpulse = tangent * friction;
+            applyForce(frictionImpulse);
+            other.applyForce(-frictionImpulse);
         }
     }
 
-    void update(float deltaTime) {
-        Vector2D dragForce = velocity * -dragCoefficient;
-        applyForce(dragForce);
+    struct State {
+        Vector2D position;
+        Vector2D velocity;
+    };
 
-        velocity += acceleration * deltaTime;
-        position += velocity * deltaTime;
+    struct Derivative {
+        Vector2D dx;
+        Vector2D dv;
+    };
+
+    Derivative evaluate(const State& state, float dt, const Derivative& d) {
+        State newState;
+        newState.position = state.position + d.dx * dt;
+        newState.velocity = state.velocity + d.dv * dt;
+
+        Derivative output;
+        output.dx = newState.velocity;
+        output.dv = acceleration;
+        return output;
+    }
+
+    void integrateRK4(float dt) {
+        State state = { position, velocity };
+
+        Derivative a = evaluate(state, 0.0f, Derivative());
+        Derivative b = evaluate(state, dt * 0.5f, a);
+        Derivative c = evaluate(state, dt * 0.5f, b);
+        Derivative d = evaluate(state, dt, c);
+
+        Vector2D dxdt = (a.dx + 2.0f * (b.dx + c.dx) + d.dx) / 6.0f;
+        Vector2D dvdt = (a.dv + 2.0f * (b.dv + c.dv) + d.dv) / 6.0f;
+
+        position += dxdt * dt;
+        velocity += dvdt * dt;
 
         acceleration = Vector2D(0, 0);
-        angle += angularVelocity * deltaTime;
+        angle += angularVelocity * dt;
+    }
+
+    void update(float deltaTime) {
+        integrateRK4(deltaTime);
     }
 
     void radiusFromSize(const Vector2D& size) {

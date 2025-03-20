@@ -143,9 +143,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp" />
+    <ClCompile Include="Visualization.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Charts.h" />
     <ClInclude Include="CheckCollision.h" />
     <ClInclude Include="Rigidbody.h" />
     <ClInclude Include="Vector2D.h" />

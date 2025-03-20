@@ -59,6 +59,14 @@ public:
         return Vector2D(x / scalar, y / scalar);
     }
 
+    Vector2D operator*(const Vector2D& other) const {
+        return Vector2D(x * other.x, y * other.y);
+    }
+
+    friend Vector2D operator*(float scalar, const Vector2D& vec) {
+        return Vector2D(vec.x * scalar, vec.y * scalar);
+    }
+
     float length() const {
         return std::sqrt(x * x + y * y);
     }
@@ -86,7 +94,6 @@ public:
     Vector2D operator-() const {
         return Vector2D(-x, -y);
     }
-
 
     float dot(const Vector2D& other) const {
         return x * other.x + y * other.y;
