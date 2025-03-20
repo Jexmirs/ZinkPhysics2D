@@ -1,0 +1,134 @@
+#ifndef CHECKCOLLISION_H
+#define CHECKCOLLISION_H
+
+#include "RigidBody.h"
+#include <cmath>
+#include <vector>
+
+namespace Collision {
+
+    bool checkCircleCollision(const RigidBody& body1, const RigidBody& body2) {
+        float distance = (body1.position - body2.position).length();
+        return distance < (body1.radius + body2.radius);
+    }
+
+    bool checkRectangleCollisionSAT(const RigidBody& body1, const RigidBody& body2) {
+        std::vector<Vector2D> body1Vertices = getRectangleVertices(body1);
+        std::vector<Vector2D> body2Vertices = getRectangleVertices(body2);
+
+        std::vector<Vector2D> axes = getAxes(body1, body2);
+
+        for (const auto& axis : axes) {
+            if (!overlapOnAxis(body1Vertices, body2Vertices, axis)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    bool checkCircleRectangleCollision(const RigidBody& body1, const RigidBody& body2) {
+        float closestX = std::clamp(body1.position.x, body2.position.x - body2.radius, body2.position.x + body2.radius);
+        float closestY = std::clamp(body1.position.y, body2.position.y - body2.radius, body2.position.y + body2.radius);
+
+        Vector2D closestPoint(closestX, closestY);
+        float distance = (body1.position - closestPoint).length();
+
+        return distance < body1.radius;
+    }
+
+    std::vector<Vector2D> getRectangleVertices(const RigidBody& body) {
+        std::vector<Vector2D> vertices;
+
+        float halfWidth = body.radius;
+        float halfHeight = body.radius;
+
+        float cosAngle = std::cos(body.angle);
+        float sinAngle = std::sin(body.angle);
+
+        vertices.push_back(body.position + Vector2D(-halfWidth, -halfHeight).rotate(body.angle));
+        vertices.push_back(body.position + Vector2D(halfWidth, -halfHeight).rotate(body.angle));
+        vertices.push_back(body.position + Vector2D(halfWidth, halfHeight).rotate(body.angle));
+        vertices.push_back(body.position + Vector2D(-halfWidth, halfHeight).rotate(body.angle));
+
+        return vertices;
+    }
+
+    std::vector<Vector2D> getAxes(const RigidBody& body1, const RigidBody& body2) {
+        std::vector<Vector2D> axes;
+
+        auto body1Vertices = getRectangleVertices(body1);
+        auto body2Vertices = getRectangleVertices(body2);
+
+        for (size_t i = 0; i < 4; i++) {
+            Vector2D edge = body1Vertices[(i + 1) % 4] - body1Vertices[i];
+            axes.push_back(edge.perpendicular().normalized());
+        }
+
+        for (size_t i = 0; i < 4; i++) {
+            Vector2D edge = body2Vertices[(i + 1) % 4] - body2Vertices[i];
+            axes.push_back(edge.perpendicular().normalized());
+        }
+
+        return axes;
+    }
+
+    bool overlapOnAxis(const std::vector<Vector2D>& body1Vertices, const std::vector<Vector2D>& body2Vertices, const Vector2D& axis) {
+        float min1, max1, min2, max2;
+
+        projectVertices(body1Vertices, axis, min1, max1);
+        projectVertices(body2Vertices, axis, min2, max2);
+
+        return !(max1 < min2 || max2 < min1);
+    }
+
+    void projectVertices(const std::vector<Vector2D>& vertices, const Vector2D& axis, float& min, float& max) {
+        min = max = axis.dot(vertices[0]);
+
+        for (size_t i = 1; i < vertices.size(); i++) {
+            float projection = axis.dot(vertices[i]);
+            min = std::min(min, projection);
+            max = std::max(max, projection);
+        }
+    }
+
+    bool checkCollision(const RigidBody& body1, const RigidBody& body2) {
+        if (checkCircleCollision(body1, body2)) {
+            return true;
+        }
+
+        if (body1.shapeType == RigidBody::ShapeType::Rectangle && body2.shapeType == RigidBody::ShapeType::Rectangle) {
+            return checkRectangleCollisionSAT(body1, body2);
+        }
+
+        if (body1.shapeType == RigidBody::ShapeType::Circle && body2.shapeType == RigidBody::ShapeType::Rectangle) {
+            return checkCircleRectangleCollision(body1, body2);
+        }
+
+        if (body1.shapeType == RigidBody::ShapeType::Rectangle && body2.shapeType == RigidBody::ShapeType::Circle) {
+            return checkCircleRectangleCollision(body2, body1);
+        }
+
+        return false;
+    }
+
+    void resolveCollision(RigidBody& body1, RigidBody& body2) {
+        if (checkCollision(body1, body2)) {
+            Vector2D normal = (body2.position - body1.position).normalized();
+            Vector2D relativeVelocity = body1.velocity - body2.velocity;
+            float velocityAlongNormal = relativeVelocity.dot(normal);
+
+            if (velocityAlongNormal > 0) return;
+
+            float restitution = 0.9f;
+            float impulseMagnitude = -(1 + restitution) * velocityAlongNormal;
+            impulseMagnitude /= body1.invMass + body2.invMass;
+
+            Vector2D impulse = normal * impulseMagnitude;
+            body1.applyForce(impulse);
+            body2.applyForce(-impulse);
+        }
+    }
+}
+
+#endif
