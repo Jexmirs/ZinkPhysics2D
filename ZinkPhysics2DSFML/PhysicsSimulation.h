@@ -1,3 +1,6 @@
+#ifndef PHYSICS_SIMULATION_H
+#define PHYSICS_SIMULATION_H
+
 #include <SFML/Graphics.hpp>
 #include <vector>
 #include <cstdlib>
@@ -43,40 +46,33 @@ void drawArrow(sf::RenderWindow& window, Vector2D start, Vector2D end, sf::Color
     window.draw(line, 2, sf::Lines);
 }
 
-int main() {
-    srand(static_cast<unsigned int>(time(0)));
-    sf::RenderWindow window(sf::VideoMode(800, 600), "2D Physics Engine");
+class PhysicsSimulation {
+public:
+    PhysicsSimulation() {
+        srand(static_cast<unsigned int>(time(0)));
 
-    std::vector<RigidBody> objects;
-    std::vector<sf::CircleShape> shapes;
+        for (int i = 0; i < NUM_OBJECTS; ++i) {
+            Vector2D position(randomFloat(50.0f, 750.0f), randomFloat(50.0f, 550.0f));
+            RigidBody ball(1.0f, position, RigidBody::ShapeType::Circle, 0.0f, 0.0f);
+            ball.radius = 20.0f;
+            ball.velocity = Vector2D(randomFloat(-50.0f, 50.0f), randomFloat(-50.0f, 50.0f));
+            objects.push_back(ball);
 
-    for (int i = 0; i < NUM_OBJECTS; ++i) {
-        Vector2D position(randomFloat(50.0f, 750.0f), randomFloat(50.0f, 550.0f));
-        RigidBody ball(1.0f, position, RigidBody::ShapeType::Circle, 0.0f, 0.0f);
-        ball.radius = 20.0f;
-        ball.velocity = Vector2D(randomFloat(-50.0f, 50.0f), randomFloat(-50.0f, 50.0f));
-        objects.push_back(ball);
+            sf::CircleShape ballShape(ball.radius);
+            ballShape.setOrigin(ball.radius, ball.radius);
+            ballShape.setFillColor(sf::Color::Red);
+            shapes.push_back(ballShape);
+        }
 
-        sf::CircleShape ballShape(ball.radius);
-        ballShape.setOrigin(ball.radius, ball.radius);
-        ballShape.setFillColor(sf::Color::Red);
-        shapes.push_back(ballShape);
+        velocityChart = Chart(10, 10, 200, 100, "Velocity Chart", sf::Color::Blue);
+        performanceChart = Chart(10, 120, 200, 100, "Performance Chart", sf::Color::Green);
+        positionChart = Chart(220, 10, 200, 100, "Position Chart", sf::Color::Red);
+        accelerationChart = Chart(220, 120, 200, 100, "Acceleration Chart", sf::Color::Yellow);
+        forceChart = Chart(440, 10, 200, 100, "Force Chart", sf::Color::Magenta);
     }
 
-    Chart velocityChart(10, 10, 200, 100, "Velocity Chart", sf::Color::Blue);
-    Chart performanceChart(10, 120, 200, 100, "Performance Chart", sf::Color::Green);
-    Chart positionChart(220, 10, 200, 100, "Position Chart", sf::Color::Red);
-    Chart accelerationChart(220, 120, 200, 100, "Acceleration Chart", sf::Color::Yellow);
-    Chart forceChart(440, 10, 200, 100, "Force Chart", sf::Color::Magenta);
-
-    sf::Clock clock;
-
-    while (window.isOpen()) {
-        sf::Event event;
-        while (window.pollEvent(event)) {
-            if (event.type == sf::Event::Closed)
-                window.close();
-        }
+    void update(sf::RenderWindow& window) {
+        sf::Clock clock;
 
         for (auto& ball : objects) {
             Vector2D gravity(0, GRAVITY * ball.mass);
@@ -97,9 +93,9 @@ int main() {
             }
         }
 
-        for (auto& ball : objects) {
-            if (ball.velocity.length() > MAX_VELOCITY) {
-                ball.velocity = ball.velocity.normalized() * MAX_VELOCITY;
+        for (size_t i = 0; i < objects.size(); ++i) {
+            if (objects[i].velocity.length() > MAX_VELOCITY) {
+                objects[i].velocity = objects[i].velocity.normalized() * MAX_VELOCITY;
             }
         }
 
@@ -120,9 +116,12 @@ int main() {
         positionChart.draw(window);
         accelerationChart.draw(window);
         forceChart.draw(window);
-
-        window.display();
     }
 
-    return 0;
-}
+private:
+    std::vector<RigidBody> objects;
+    std::vector<sf::CircleShape> shapes;
+    Chart velocityChart, performanceChart, positionChart, accelerationChart, forceChart;
+};
+
+#endif

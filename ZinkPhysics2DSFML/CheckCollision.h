@@ -3,8 +3,7 @@
 
 #include "RigidBody.h"
 #include <cmath>
-#include <vector>
-#include <algorithm>
+#include <array>
 
 namespace Collision {
 
@@ -15,9 +14,9 @@ namespace Collision {
     }
 
     bool checkRectangleCollisionSAT(const RigidBody& body1, const RigidBody& body2) {
-        std::vector<Vector2D> body1Vertices = getRectangleVertices(body1);
-        std::vector<Vector2D> body2Vertices = getRectangleVertices(body2);
-        std::vector<Vector2D> axes = getAxes(body1, body2);
+        std::array<Vector2D, 4> body1Vertices = getRectangleVertices(body1);
+        std::array<Vector2D, 4> body2Vertices = getRectangleVertices(body2);
+        std::array<Vector2D, 8> axes = getAxes(body1, body2);
 
         for (const auto& axis : axes) {
             if (!overlapOnAxis(body1Vertices, body2Vertices, axis)) {
@@ -38,40 +37,40 @@ namespace Collision {
         return distanceSquared < (body1.radius * body1.radius);
     }
 
-    std::vector<Vector2D> getRectangleVertices(const RigidBody& body) {
-        std::vector<Vector2D> vertices;
-        float halfWidth = body.radius;
-        float halfHeight = body.radius;
+    std::array<Vector2D, 4> getRectangleVertices(const RigidBody& body) {
+        std::array<Vector2D, 4> vertices;
+        float halfWidth = body.radius; // Assuming radius is half the width of the rectangle
+        float halfHeight = body.radius; // Assuming radius is half the height of the rectangle
         float cosAngle = std::cos(body.angle);
         float sinAngle = std::sin(body.angle);
 
-        vertices.push_back(body.position + Vector2D(-halfWidth, -halfHeight).rotate(body.angle));
-        vertices.push_back(body.position + Vector2D(halfWidth, -halfHeight).rotate(body.angle));
-        vertices.push_back(body.position + Vector2D(halfWidth, halfHeight).rotate(body.angle));
-        vertices.push_back(body.position + Vector2D(-halfWidth, halfHeight).rotate(body.angle));
+        vertices[0] = body.position + Vector2D(-halfWidth, -halfHeight).rotate(body.angle);
+        vertices[1] = body.position + Vector2D(halfWidth, -halfHeight).rotate(body.angle);
+        vertices[2] = body.position + Vector2D(halfWidth, halfHeight).rotate(body.angle);
+        vertices[3] = body.position + Vector2D(-halfWidth, halfHeight).rotate(body.angle);
 
         return vertices;
     }
 
-    std::vector<Vector2D> getAxes(const RigidBody& body1, const RigidBody& body2) {
-        std::vector<Vector2D> axes;
+    std::array<Vector2D, 8> getAxes(const RigidBody& body1, const RigidBody& body2) {
+        std::array<Vector2D, 8> axes;
         auto body1Vertices = getRectangleVertices(body1);
         auto body2Vertices = getRectangleVertices(body2);
 
         for (size_t i = 0; i < 4; i++) {
             Vector2D edge = body1Vertices[(i + 1) % 4] - body1Vertices[i];
-            axes.push_back(edge.perpendicular().normalized());
+            axes[i] = edge.perpendicular().normalized();
         }
 
         for (size_t i = 0; i < 4; i++) {
             Vector2D edge = body2Vertices[(i + 1) % 4] - body2Vertices[i];
-            axes.push_back(edge.perpendicular().normalized());
+            axes[4 + i] = edge.perpendicular().normalized();
         }
 
         return axes;
     }
 
-    bool overlapOnAxis(const std::vector<Vector2D>& body1Vertices, const std::vector<Vector2D>& body2Vertices, const Vector2D& axis) {
+    bool overlapOnAxis(const std::array<Vector2D, 4>& body1Vertices, const std::array<Vector2D, 4>& body2Vertices, const Vector2D& axis) {
         float min1, max1, min2, max2;
 
         projectVertices(body1Vertices, axis, min1, max1);
@@ -80,7 +79,7 @@ namespace Collision {
         return !(max1 < min2 || max2 < min1);
     }
 
-    void projectVertices(const std::vector<Vector2D>& vertices, const Vector2D& axis, float& min, float& max) {
+    void projectVertices(const std::array<Vector2D, 4>& vertices, const Vector2D& axis, float& min, float& max) {
         min = max = axis.dot(vertices[0]);
 
         for (size_t i = 1; i < vertices.size(); i++) {
@@ -121,7 +120,6 @@ namespace Collision {
             float velocityAlongNormal = relativeVelocity.dot(normal);
 
             if (velocityAlongNormal < 0) {
-
                 float restitution = 1.0f;
 
                 float impulse = -(1 + restitution) * velocityAlongNormal;

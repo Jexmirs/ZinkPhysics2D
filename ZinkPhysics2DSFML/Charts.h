@@ -7,6 +7,10 @@
 
 class Chart {
 public:
+    Chart()
+        : xPos(0), yPos(0), chartWidth(200), chartHeight(100), chartColor(sf::Color::Black), chartTitle("") {
+    }
+
     Chart(float x, float y, float width, float height, const std::string& title, sf::Color color = sf::Color::Black)
         : xPos(x), yPos(y), chartWidth(width), chartHeight(height), chartColor(color), chartTitle(title) {
     }
@@ -41,5 +45,4 @@ private:
     std::vector<float> data;
     std::string chartTitle;
 };
-
 #endif
