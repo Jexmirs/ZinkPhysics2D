@@ -1,4 +1,4 @@
-#include <SFML/Graphics.hpp>
+﻿#include <SFML/Graphics.hpp>
 #include "FluidSimulation.h"
 #include "PhysicsSimulation.h"
 
@@ -8,22 +8,21 @@ enum class VisualizationType {
 };
 
 int main() {
-    const int width = 100;
-    const int height = 100;
-    const float cellSize = 5.0f;
-    const float timestep = 0.1f;
+    const int width = 64;
+    const int height = 64;
+    const float cellSize = 10.0f;
+    const float timestep = 0.01f;
 
     sf::RenderWindow window(sf::VideoMode(static_cast<unsigned int>(width * cellSize),
         static_cast<unsigned int>(height * cellSize)),
-        "Visualization");
+        "Fluid Simulation");
 
-    FluidSimulation fluidSim(width, height, cellSize);
+    FluidSimulation fluidSim(width, timestep, 0.0001f);
     PhysicsSimulation physicsSim;
 
-    fluidSim.addParticle(Vector2D(50, 50), Vector2D(1.0f, 0.0f), 1.0f);
-    fluidSim.addParticle(Vector2D(60, 50), Vector2D(0.0f, 1.0f), 1.0f);
-
     VisualizationType currentVisualization = VisualizationType::FluidSimulation;
+
+    fluidSim.setFluidAmount(1.5f);
 
     while (window.isOpen()) {
         sf::Event event;
